@@ -92,7 +92,8 @@ namespace MP3Sharp
                 {
                     m_ChannelCountRep = 1;
                     m_Buffer = new Buffer16BitMono();
-                } else 
+                } 
+                else 
                 {
                     m_ChannelCountRep = 2;
                     m_Buffer = new Buffer16BitStereo();
