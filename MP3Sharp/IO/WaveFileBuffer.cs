@@ -33,8 +33,8 @@ namespace MP3Sharp.IO
             if (fileName == null)
                 throw new NullReferenceException("FileName");
 
-            m_Buffer = new short[OBUFFERSIZE];
-            m_Bufferp = new short[MAXCHANNELS];
+            m_Buffer = new short[ABufferUtil.OBUFFERSIZE];
+            m_Bufferp = new short[ABufferUtil.MAXCHANNELS];
             m_Channels = numberOfChannels;
 
             for (int i = 0; i < numberOfChannels; ++i)
@@ -47,8 +47,8 @@ namespace MP3Sharp.IO
 
         public WaveFileBuffer(int numberOfChannels, int freq, Stream stream)
         {
-            m_Buffer = new short[OBUFFERSIZE];
-            m_Bufferp = new short[MAXCHANNELS];
+            m_Buffer = new short[ABufferUtil.OBUFFERSIZE];
+            m_Bufferp = new short[ABufferUtil.MAXCHANNELS];
             m_Channels = numberOfChannels;
 
             for (int i = 0; i < numberOfChannels; ++i)
@@ -62,13 +62,18 @@ namespace MP3Sharp.IO
         /// <summary>
         ///     Takes a 16 Bit PCM sample.
         /// </summary>
-        public override void Append(int channel, short valueRenamed)
+        public void Append(int channel, short valueRenamed)
         {
             m_Buffer[m_Bufferp[channel]] = valueRenamed;
             m_Bufferp[channel] = (short) (m_Bufferp[channel] + m_Channels);
         }
 
-        public override void WriteBuffer(int val)
+        public void AppendSamples(int channel, float[] f)
+        {
+            this.DefaultAppendSamples(channel, f);
+        }
+
+        public void WriteBuffer(int val)
         {
             int rc = m_OutWave.WriteData(m_Buffer, m_Bufferp[0]);
             for (int i = 0; i < m_Channels; ++i)
@@ -80,7 +85,7 @@ namespace MP3Sharp.IO
             m_OutWave.Close(justWriteLengthBytes);
         }
 
-        public override void Close()
+        public void Close()
         {
             m_OutWave.Close();
         }
@@ -88,14 +93,14 @@ namespace MP3Sharp.IO
         /// <summary>
         ///     *
         /// </summary>
-        public override void ClearBuffer()
+        public void ClearBuffer()
         {
         }
 
         /// <summary>
         ///     *
         /// </summary>
-        public override void SetStopFlag()
+        public void SetStopFlag()
         {
         }
     }

@@ -118,7 +118,7 @@ namespace MP3Sharp.Decoding
         ///     an upper bound and fewer samples may actually be written, depending
         ///     upon the sample rate and number of channels.
         /// </summary>
-        public virtual int OutputBlockSize => ABuffer.OBUFFERSIZE;
+        public virtual int OutputBlockSize => ABufferUtil.OBUFFERSIZE;
 
         private void InitBlock()
         {

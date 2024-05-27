@@ -30,7 +30,7 @@ namespace MP3Sharp
         private readonly Bitstream m_BitStream;
         private readonly Decoder m_Decoder = new Decoder(Decoder.DefaultParams);
         // local variables.
-        private readonly Buffer16BitStereo m_Buffer;
+        private readonly IStreamBuffer m_Buffer;
         private readonly Stream m_SourceStream;
         private readonly int m_BackStreamByteCountRep = 0;
         private short m_ChannelCountRep = -1;
@@ -78,11 +78,33 @@ namespace MP3Sharp
             FormatRep = SoundFormat.Pcm16BitStereo;
             m_SourceStream = sourceStream;
             m_BitStream = new Bitstream(new PushbackStream(m_SourceStream, chunkSize));
-            m_Buffer = new Buffer16BitStereo();
-            m_Decoder.OutputBuffer = m_Buffer;
-            // read the first frame. This will fill the initial buffer with data, and get our frequency!
-            if (!ReadFrame())
+            
+            // Read a frame from the bitstream.
+            Header header = m_BitStream.readFrame();
+            if (header == null)
+            {
                 IsEOF = true;
+            } 
+            else
+            {
+                // Set the channel count and frequency values for the stream.
+                if (header.mode() == Header.SINGLE_CHANNEL) 
+                {
+                    m_ChannelCountRep = 1;
+                    m_Buffer = new Buffer16BitMono();
+                } else 
+                {
+                    m_ChannelCountRep = 2;
+                    m_Buffer = new Buffer16BitStereo();
+                }
+
+                m_FrequencyRep = header.frequency();
+                
+                // Rewind so that the first frame can be read with the decoder. 
+                m_BitStream.unreadFrame();
+            }
+            
+            m_Decoder.OutputBuffer = m_Buffer;
         }
 
         /// <summary>
@@ -242,14 +264,6 @@ namespace MP3Sharp
 
             try
             {
-                // Set the channel count and frequency values for the stream.
-                if (header.mode() == Header.SINGLE_CHANNEL)
-                    m_ChannelCountRep = 1;
-                else
-                    m_ChannelCountRep = 2;
-
-                m_FrequencyRep = header.frequency();
-
                 // Decode the frame.
                 ABuffer decoderOutput = m_Decoder.DecodeFrame(header, m_BitStream);
 

@@ -1,6 +1,6 @@
 ﻿// /***************************************************************************
-//  * Buffer16BitStereo.cs
-//  * Copyright (c) 2015 the authors.
+//  * Buffer16BitMono.cs
+//  * Copyright (c) 2024 the authors.
 //  * 
 //  * All rights reserved. This program and the accompanying materials
 //  * are made available under the terms of the GNU Lesser General Public License
@@ -20,23 +20,23 @@ using MP3Sharp.Decoding;
 namespace MP3Sharp
 {
     /// <summary>
-    ///     Internal class used to queue samples that are being obtained from an Mp3 stream. 
-    ///     This class handles stereo 16-bit data! Switch it out if you want mono or something.
+    ///     Internal class used to queue samples that are being obtained from an Mp3 stream.
     /// </summary>
-    internal class Buffer16BitStereo : IStreamBuffer
+    internal class Buffer16BitMono : IStreamBuffer
     {
-        // This is stereo!
-        private static readonly int CHANNELS = 2;
         // Write offset used in append_bytes
-        private readonly byte[] m_Buffer = new byte[ABufferUtil.OBUFFERSIZE * 2]; // all channels interleaved
-        private readonly int[] m_Bufferp = new int[ABufferUtil.MAXCHANNELS]; // offset in each channel not same!
+        private readonly byte[] m_Buffer = new byte[ABufferUtil.OBUFFERSIZE]; // all channels interleaved
+        
+        private int m_Bufferp;
+        
         // end marker, one past end of array. Same as bufferp[0], but
         // without the array bounds check.
         private int m_End;
+        
         // Read offset used to read from the stream, in bytes.
         private int m_Offset;
 
-        public Buffer16BitStereo()
+        public Buffer16BitMono()
         {
             // Initialize the buffer pointers
             ClearBuffer();
@@ -75,7 +75,7 @@ namespace MP3Sharp
             else
             {
                 // Copy an even number of sample frames
-                int remainder = count % (2 * CHANNELS);
+                int remainder = count % 2;
                 copySize = count - remainder;
             }
 
@@ -92,10 +92,10 @@ namespace MP3Sharp
         /// <param name="sampleValue">The sample value.</param>
         public void Append(int channel, short sampleValue)
         {
-            m_Buffer[m_Bufferp[channel]] = (byte)(sampleValue & 0xff);
-            m_Buffer[m_Bufferp[channel] + 1] = (byte)(sampleValue >> 8);
+            m_Buffer[m_Bufferp] = (byte)(sampleValue & 0xff);
+            m_Buffer[m_Bufferp + 1] = (byte)(sampleValue >> 8);
 
-            m_Bufferp[channel] += CHANNELS * 2;
+            m_Bufferp += 2;
         }
 
         /// <summary>
@@ -112,14 +112,14 @@ namespace MP3Sharp
             if (samples == null)
             {
                 // samples is required.
-                throw new ArgumentNullException("samples");
+                throw new ArgumentNullException(nameof(samples));
             }
             if (samples.Length < 32)
             {
                 throw new ArgumentException("samples must have 32 values");
             }
             // Always, 32 samples are appended
-            int pos = m_Bufferp[channel];
+            int pos = m_Bufferp;
 
             for (int i = 0; i < 32; i++)
             {
@@ -133,22 +133,17 @@ namespace MP3Sharp
                 m_Buffer[pos] = (byte)(sample & 0xff);
                 m_Buffer[pos + 1] = (byte)(sample >> 8);
 
-                pos += CHANNELS * 2;
+                pos += 2;
             }
 
-            m_Bufferp[channel] = pos;
+            m_Bufferp = pos;
         }
-
-        /// <summary>
-        ///     This implementation does not clear the buffer.
-        /// </summary>
+        
         public void ClearBuffer()
         {
             m_Offset = 0;
             m_End = 0;
-
-            for (int i = 0; i < CHANNELS; i++)
-                m_Bufferp[i] = i * 2; // two bytes per channel
+            m_Bufferp = 0;
         }
 
         public void SetStopFlag()
@@ -158,12 +153,7 @@ namespace MP3Sharp
         public void WriteBuffer(int val)
         {
             m_Offset = 0;
-
-            // speed optimization - save end marker, and avoid
-            // array access at read time. Can you believe this saves
-            // like 1-2% of the cpu on a PIII? I guess allocating
-            // that temporary "new int(0)" is expensive, too.
-            m_End = m_Bufferp[0];
+            m_End = m_Bufferp;
         }
 
         public void Close()

@@ -16,29 +16,54 @@
 namespace MP3Sharp.Decoding
 {
     /// <summary>
-    ///     Base Class for audio output.
+    /// A buffer that a <see cref="Decoder"/> can output to.
     /// </summary>
-    internal abstract class ABuffer
+    internal interface ABuffer
     {
-        public const int OBUFFERSIZE = 2*1152; // max. 2 * 1152 samples per frame
-        public const int MAXCHANNELS = 2; // max. number of channels
-
         /// <summary>
         ///     Takes a 16 Bit PCM sample.
         /// </summary>
-        public abstract void Append(int channel, short valueRenamed);
+        void Append(int channel, short valueRenamed);
 
         /// <summary>
         ///     Accepts 32 new PCM samples.
         /// </summary>
-        public virtual void AppendSamples(int channel, float[] f)
+        void AppendSamples(int channel, float[] f);
+        
+        /// <summary>
+        ///     Write the samples to the file or directly to the audio hardware.
+        /// </summary>
+        void WriteBuffer(int val);
+
+        void Close();
+
+        /// <summary>
+        ///     Clears all data in the buffer (for seeking).
+        /// </summary>
+        void ClearBuffer();
+
+        /// <summary>
+        ///     Notify the buffer that the user has stopped the stream.
+        /// </summary>
+        void SetStopFlag();
+    }
+    
+    internal static class ABufferUtil
+    {
+        public const int OBUFFERSIZE = 2*1152; // max. 2 * 1152 samples per frame
+        public const int MAXCHANNELS = 2; // max. number of channels
+        
+        /// <summary>
+        ///     Accepts 32 new PCM samples.
+        /// </summary>
+        internal static void DefaultAppendSamples(this ABuffer buffer, int channel, float[] f)
         {
             for (int i = 0; i < 32; i++)
             {
-                Append(channel, Clip((f[i])));
+                buffer.Append(channel, Clip((f[i])));
             }
         }
-
+        
         /// <summary>
         ///     Clip Sample to 16 Bits
         /// </summary>
@@ -46,22 +71,5 @@ namespace MP3Sharp.Decoding
         {
             return ((sample > 32767.0f) ? (short) 32767 : ((sample < -32768.0f) ? (short) -32768 : (short) sample));
         }
-
-        /// <summary>
-        ///     Write the samples to the file or directly to the audio hardware.
-        /// </summary>
-        public abstract void WriteBuffer(int val);
-
-        public abstract void Close();
-
-        /// <summary>
-        ///     Clears all data in the buffer (for seeking).
-        /// </summary>
-        public abstract void ClearBuffer();
-
-        /// <summary>
-        ///     Notify the buffer that the user has stopped the stream.
-        /// </summary>
-        public abstract void SetStopFlag();
     }
 }
